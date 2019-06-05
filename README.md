@@ -6,7 +6,7 @@ ALWAYS VERIFY THE LOCKOUT POLICY TO PREVENT LOCKING USERS.
 ## How to use it
 First, install the needed dependencies:
 ```
-pip3 install -r requirments.txt
+pip3 install -r requirements.txt
 ```
 Second, make sure you have xfreerdp:
 ```
