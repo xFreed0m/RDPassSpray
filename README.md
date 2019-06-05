@@ -6,7 +6,7 @@ ALWAYS VERIFY THE LOCKOUT POLICY TO PREVENT LOCKING USERS.
 ## How to use it
 First, install the needed dependencies:
 ```
-pip install -r requirments.txt
+pip3 install -r requirments.txt
 ```
 Second, make sure you have xfreerdp:
 ```
@@ -15,7 +15,7 @@ apt-get install xfreerdp
 ````
 Last, run the tool with the needed flags:
 ```
-python RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
+python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
 ```
 
 ## Options to consider
