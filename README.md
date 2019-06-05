@@ -24,13 +24,13 @@ python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
 * -u\-U
   * single username or file with usernames (one each line)  
 * -n
- * list of hostname to use when authenticating (more details below)
+  * list of hostname to use when authenticating (more details below)
 * -o
- * output file name (csv)
+  * output file name (csv)
 * -s
- * throttling time (in seconds) between attempts
+  * throttling time (in seconds) between attempts
 * -r
- * random throttling time between attempts (based on user input for min and max values)
+  * random throttling time between attempts (based on user input for min and max values)
  
  
 ## Advantages for this technique
