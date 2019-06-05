@@ -42,7 +42,7 @@ Failed authentication attempts will produce event ID 4625 ("An account failed to
 
 ### Tested OS
 Currently was test on Kali Rolling against Windows Server 2012 Domain Controller
-I didn't had a full logged environemnt for deeper testing, if you have one, please let me know how it looks on other systems.
+I didn't had a full logged environment for deeper testing, if you have one, please let me know how it looks on other systems.
 
 ### Sample
 ![sample](https://github.com/xFreed0m/RDPassSpray/blob/master/sample.png)
