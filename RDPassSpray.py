@@ -305,6 +305,7 @@ def logo():
 
 
 def main():
+    logo()
     random = False
     min_sleep, max_sleep = 0, 0
     usernames_stripped, passwords_stripped = [], []
