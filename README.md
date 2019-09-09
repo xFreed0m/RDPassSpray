@@ -21,6 +21,8 @@ python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
 ## Options to consider
 * -p\-P
   * single password or file with passwords (one each line)
+* -t\-T
+  * single target or file with targets (one each line)
 * -u\-U
   * single username or file with usernames (one each line)  
 * -n
