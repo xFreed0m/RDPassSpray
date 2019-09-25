@@ -46,7 +46,7 @@ def args_parse():
     parser.add_argument('-o', '--output', help="Output each attempt result to a csv file",
                         default="RDPassSpray")
 
-    parser.add_argument('-V', '--verbose', help="Turn on verbosity to print failed "
+    parser.add_argument('-V', '--verbose', help="Turn on verbosity to show failed "
                                                 "attempts", action="store_true", default=False)
     return parser.parse_args()
 
@@ -144,7 +144,7 @@ def locked_input(question, possible_answer, default_ans, timeout=5):  # asking t
 
 
 def attempts(users, passes, targets, domain, output_file_name, hostnames_stripped, sleep_time,
-             hostname_loop, random, min_sleep, max_sleep):
+             hostname_loop, random, min_sleep, max_sleep, verbose):
     # xfreerdp response status codes:
     # failed_login = b"ERRCONNECT_LOGON_FAILURE [0x00020014]"
     # access_denied = b"ERRCONNECT_AUTHENTICATION_FAILED [0x00020009]"
@@ -197,7 +197,8 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                         exit(1)
                     elif any(word in output_error for word in failed_login):
                         status = 'Invalid'
-                        output(status, username, password, target, output_file_name)
+                        if verbose:
+                            output(status, username, password, target, output_file_name)
                         LOGGER.debug("[-]Creds failed for: " + username)
                     elif account_locked in output_error:
                         status = 'Locked'
@@ -378,7 +379,8 @@ def main():
     LOGGER.info("Total number of attempts: " + str(total_attempts))
 
     attempts(usernames_stripped, passwords_stripped, targets_stripped, args.domain, args.output,
-             hostnames_stripped, args.sleep, hostname_loop, random, min_sleep, max_sleep)
+             hostnames_stripped, args.sleep, hostname_loop, random, min_sleep, max_sleep,
+             args.verbose)
 
 
 if __name__ == '__main__':
