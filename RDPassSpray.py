@@ -30,8 +30,7 @@ def args_parse():
     pass_group.add_argument('-P', '--passwordlist',
                             help="Password list to use, one password per line")
     target_group.add_argument('-T', '--targets', help="Targets list to use, one target per line")
-    target_group.add_argument('-t', '--target', help="Target machine to authenticate against",
-                              required=True)
+    target_group.add_argument('-t', '--target', help="Target machine to authenticate against")
     sleep_group.add_argument('-s', '--sleep', type=int,
                              help="Throttle the attempts to one attempt every # seconds, "
                                   "can be randomized by passing the value 'random' - default is 0",
