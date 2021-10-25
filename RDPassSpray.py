@@ -170,7 +170,7 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
             "[*] Started running at: %s" % datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'))
         output('Status', 'Username', 'Password', 'Target', output_file_name)
         for target in targets:
-            test_RDP = subprocess.Popen("xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:%s" "/sec:nla"
+            test_RDP = subprocess.Popen("xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:\"%s\"" "/sec:nla"
                                         " /cert-ignore" % (target, domain, "SOCtest",
                                                            "AllLegitHere"), stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE, shell=True)
@@ -189,7 +189,7 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                                 attempts_hostname_counter],
                             shell=True)
                         spray = subprocess.Popen(
-                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:%s /sec:nla /cert-ignore" %
+                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:\"%s\" /sec:nla /cert-ignore" %
                             (target, domain, username, password), stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
                         output_error = spray.stderr.read()
