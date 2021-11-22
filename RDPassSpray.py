@@ -232,35 +232,35 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                             working_creds_counter += 1
                             LOGGER.warning(
                                 "[*] Creds valid, but account disabled: " + username + " :: "
-                                + password)
+                                + password + ' @' + target)
                         elif any(word in output_error for word in pass_expired):
                             status = 'Password Expired'
                             output(status, username, password, target, output_file_name)
                             working_creds_counter += 1
                             LOGGER.warning(
                                 "[*] Creds valid, but pass expired: " + username + " :: " +
-                                password)
+                                password + ' @' + target)
                         elif account_expired in output_error:
                             status = 'Account expired'
                             output(status, username, password, target, output_file_name)
                             working_creds_counter += 1
                             LOGGER.warning(
                                 "[*] Creds valid, but account expired: " + username + " :: "
-                                + password)
+                                + password + ' @' + target )
                         elif any(word in output_error for word in success_login_no_rdp):
                             status = 'Valid creds WITHOUT RDP access'
                             output(status, username, password, target, output_file_name)
                             working_creds_counter += 1
                             LOGGER.info(
                                 "[+] Seems like the creds are valid, but no RDP permissions: "
-                                + username + " :: " + password)
+                                + username + " :: " + password + ' @' + target)
                         elif success_login_yes_rdp in output_error:
                             status = 'Valid creds WITH RDP access (maybe even local admin!)'
                             output(status, username, password, target, output_file_name)
                             working_creds_counter += 1
                             LOGGER.info(
                                 "[+] Cred successful (maybe even Admin access!): " + username +
-                                " :: " + password)
+                                " :: " + password + ' @' + target )
                         else:
                             status = 'Unknown status, check the log file'
                             output(status, username, password, target, output_file_name)
