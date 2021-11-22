@@ -232,7 +232,7 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                             working_creds_counter += 1
                             LOGGER.warning(
                                 "[*] Creds valid, but account disabled: " + username + " :: "
-                                + password + ' @'+target)
+                                + password + ' @' + target)
                         elif any(word in output_error for word in pass_expired):
                             status = 'Password Expired'
                             output(status, username, password, target, output_file_name)
