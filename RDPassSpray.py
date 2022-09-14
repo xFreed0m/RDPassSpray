@@ -189,8 +189,8 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                                 attempts_hostname_counter],
                             shell=True)
                         spray = subprocess.Popen(
-                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:\"%s\" /sec:nla /cert-ignore" %
-                            (target, domain, username, password), stdout=subprocess.PIPE,
+                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:'%s' /sec:nla /cert-ignore" %
+                            (target, domain, username, password.replace("'","'\"'\"'"), stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
                         output_error = spray.stderr.read()
                         output_info = spray.stdout.read()
