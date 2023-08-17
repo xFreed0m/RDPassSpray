@@ -20,11 +20,13 @@ python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
 
 ## Options to consider
 * -p\\-P
-  * single password or file with passwords (one each line)
+  * single password/hash or file with passwords/hashes (one each line)
 * -t\\-T
   * single target or file with targets (one each line)
 * -u\\-U
   * single username or file with usernames (one each line)  
+* --pth
+  * specify this if the supplied passwords are to be treated as hashes for Pass-The-Hash
 * -n
   * list of hostname to use when authenticating (more details below)
 * -o
@@ -33,7 +35,6 @@ python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
   * throttling time (in seconds) between attempts
 * -r
   * random throttling time between attempts (based on user input for min and max values)
- 
  
 ## Advantages for this technique
 Failed authentication attempts will produce event ID 4625 ("An account failed to log on") BUT:
